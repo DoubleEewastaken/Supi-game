@@ -1,17 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Survival Game</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Supi Survival (WASD)</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="gameCanvas" width="900" height="600"></canvas>
-  <div id="hud">
-    ❤️ <span id="health">100</span> | 🍖 <span id="hunger">100</span> | 💧 <span id="thirst">100</span> 
-    | 🪵 <span id="wood">0</span> | 🪨 <span id="stone">0</span>
+  <div id="ui">
+    <div id="stats">
+      <span>❤️ <b id="health">100</b></span>
+      <span>🍖 <b id="hunger">100</b></span>
+      <span>💧 <b id="thirst">100</b></span>
+      <span>🪵 <b id="wood">0</b></span>
+      <span>🪨 <b id="stone">0</b></span>
+      <span>⛺ <b id="campfires">0</b></span>
+    </div>
+    <div id="tips">Controls: WASD = move • X = chop • Z = mine • C = craft campfire</div>
   </div>
+
+  <canvas id="game" width="1000" height="700"></canvas>
+
   <script src="game.js"></script>
 </body>
 </html>
