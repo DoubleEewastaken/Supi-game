@@ -1,365 +1,128 @@
-<!--
-Hyper Interactive Survival Game
-Single-file HTML + JS game you can drop into a GitHub repo and host with GitHub Pages.
-
-How to use:
-1. Create a new public GitHub repository (name it e.g. `survival-game`).
-2. Add this file as `index.html` at the repo root.
-3. Commit & push.
-4. In the repo GitHub Settings -> Pages, set the source branch to `main` (or `gh-pages`) and the folder to `/ (root)`.
-5. Open the provided GitHub Pages URL; your game will load.
-
-Controls:
-- WASD or arrow keys: move
-- Mouse click on world: harvest resource or place item
-- I: open / close inventory
-- Space: interact / craft quick action
-- P: pause
-
-Features included (compact but extendable):
-- Tile-based world drawn on canvas
-- Day / night cycle with lighting and enemies spawning at night
-- Player stats: health, hunger, thirst, warmth
-- Resources: wood, stone, berries; harvesting and inventory
-- Crafting simple items (campfire, spear)
-- Campfire gives warmth + heals slowly at night
-- Enemies (wolves) that chase player at night
-- Save / load via localStorage
-- Responsive canvas and touch-friendly controls
-
-This is intentionally compact and well-commented so you can expand mechanics, art, or multiplayer.
--->
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Hyper Interactive Survival — Single File</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Survival Game</title>
   <style>
-    :root{--bg:#0b1220;--panel:#0f1724;--accent:#f6b73c;--muted:#9aa6b2}
-    html,body{height:100%;margin:0;background:linear-gradient(#071021,#081224);font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
-    #gameWrap{display:flex;flex-direction:row;gap:12px;padding:12px;box-sizing:border-box;height:100%}
-    #canvasWrap{flex:1;display:flex;align-items:center;justify-content:center}
-    canvas{background:linear-gradient(#86b3ff08,#00000022);border-radius:12px;box-shadow:0 6px 30px rgba(2,6,23,0.6);max-width:100%;height:auto}
-    #hud{width:320px;background:linear-gradient(180deg,var(--panel),#07121b);border-radius:10px;padding:12px;color:#e6eef6;box-shadow:inset 0 1px 0 rgba(255,255,255,0.02)}
-    .stat{display:flex;justify-content:space-between;margin:6px 0;font-size:14px}
-    .bar{background:#06111a;border-radius:8px;height:14px;overflow:hidden}
-    .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#ff8e8e)}
-    #inventory{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-    .slot{background:#02141a;border-radius:6px;padding:8px;text-align:center;font-size:12px}
-    button{appearance:none;border:0;background:var(--accent);color:#081018;padding:8px 10px;border-radius:8px;cursor:pointer}
-    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
-    #log{height:120px;overflow:auto;background:#071620;margin-top:8px;padding:8px;border-radius:6px;font-size:13px;color:var(--muted)}
-    footer{position:fixed;left:12px;bottom:12px;color:#8ea0b3;font-size:12px}
-    @media(max-width:900px){#gameWrap{flex-direction:column}#hud{width:100%}}
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #87ceeb;
+      font-family: sans-serif;
+      color: white;
+    }
+    #gameCanvas {
+      background: #228b22;
+      display: block;
+      margin: 0 auto;
+      border: 3px solid #fff;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
-  <div id="gameWrap">
-    <div id="canvasWrap">
-      <canvas id="game" width="960" height="600"></canvas>
-    </div>
-    <div id="hud">
-      <h3 style="margin:0 0 8px 0">Hyper Interactive Survival</h3>
-      <div class="stat"> <div>Health</div> <div id="healthTxt">100</div></div>
-      <div class="bar"><i id="healthBar" style="width:100%"></i></div>
-
-      <div class="stat"><div>Hunger</div><div id="hungerTxt">0</div></div>
-      <div class="bar"><i id="hungerBar" style="width:0%"></i></div>
-
-      <div class="stat"><div>Thirst</div><div id="thirstTxt">0</div></div>
-      <div class="bar"><i id="thirstBar" style="width:0%"></i></div>
-
-      <div class="stat"><div>Warmth</div><div id="warmthTxt">50</div></div>
-      <div class="bar"><i id="warmthBar" style="width:50%"></i></div>
-
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button id="btnSave">Save</button>
-        <button id="btnLoad" class="btn-ghost">Load</button>
-        <button id="btnReset" class="btn-ghost">Reset</button>
-      </div>
-
-      <h4 style="margin-top:12px;margin-bottom:6px">Inventory</h4>
-      <div id="inventory"></div>
-
-      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        <button id="craftFire">Craft Campfire</button>
-        <button id="craftSpear">Craft Spear</button>
-        <button id="eatBerries" class="btn-ghost">Eat Berries</button>
-      </div>
-
-      <div id="log"></div>
-    </div>
-  </div>
-  <footer>Controls: WASD / Arrow keys to move • Click to interact • I inventory • P pause</footer>
-
+  <canvas id="gameCanvas" width="800" height="500"></canvas>
+  <div id="hud">❤️ Health: <span id="health">100</span> | 🍖 Food: <span id="food">0</span></div>
   <script>
-  // Tiny survival engine
-  (()=>{
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
-    let W = canvas.width, H = canvas.height;
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-    // world settings
-    const TILE = 48; // tile size
-    const COLS = Math.ceil(W / TILE);
-    const ROWS = Math.ceil(H / TILE);
+    let player = { x: 400, y: 250, size: 25, color: "blue", health: 100, food: 0 };
+    let foods = [];
+    let reach = 60; // increased reach range
 
-    // player
-    const player = {x:W/2,y:H/2,r:12,speed:140,health:100,hunger:0,thirst:0,warmth:50,dir:0};
-
-    // time
-    let time = 8; // hours (0-23)
-    let paused=false;
-
-    // inventory
-    const inv = {wood:0,stone:0,berries:0,spear:false,fire:false};
-
-    // world resources (simple list of objects)
-    const resources = [];
-    const fires = [];
-    const enemies = [];
-
-    // UI elements
-    const healthBar = document.getElementById('healthBar');
-    const healthTxt = document.getElementById('healthTxt');
-    const hungerBar = document.getElementById('hungerBar');
-    const hungerTxt = document.getElementById('hungerTxt');
-    const thirstBar = document.getElementById('thirstBar');
-    const thirstTxt = document.getElementById('thirstTxt');
-    const warmthBar = document.getElementById('warmthBar');
-    const warmthTxt = document.getElementById('warmthTxt');
-    const inventoryEl = document.getElementById('inventory');
-    const logEl = document.getElementById('log');
-
-    function log(s){
-      const line = document.createElement('div');
-      line.textContent = `[${formatTime(time)}] ` + s;
-      logEl.prepend(line);
-      if(logEl.childElementCount>200){logEl.removeChild(logEl.lastChild)}
+    function randomFood() {
+      return {
+        x: Math.random() * (canvas.width - 20),
+        y: Math.random() * (canvas.height - 20),
+        size: 15,
+        color: "orange",
+      };
     }
 
-    function formatTime(t){
-      const h = Math.floor(t)%24; const am = h<12? 'AM':'PM'; const hh = (h%12)||12; return hh+':00 '+am;
-    }
+    // start with 5 food items
+    for (let i = 0; i < 5; i++) foods.push(randomFood());
 
-    // spawn random resources
-    function populateResources(){
-      resources.length=0;
-      for(let i=0;i<60;i++){
-        const type = Math.random()<0.5? 'wood':(Math.random()<0.7?'stone':'berries');
-        resources.push({x:Math.random()*(W-80)+40,y:Math.random()*(H-80)+40,type,hit:0});
-      }
-    }
-
-    populateResources();
-
-    // input
-    const keys = {};
-    window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true; if(e.key==='i' || e.key==='I'){toggleInventory()} if(e.key==='p' || e.key==='P'){paused=!paused}});
-    window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
-
-    // mouse interaction
-    canvas.addEventListener('click',e=>{
-      const rect = canvas.getBoundingClientRect();
-      const mx = (e.clientX-rect.left)*(canvas.width/rect.width);
-      const my = (e.clientY-rect.top)*(canvas.height/rect.height);
-      handleClick(mx,my);
+    document.addEventListener("keydown", (e) => {
+      const speed = 5;
+      if (e.key === "w" || e.key === "ArrowUp") player.y -= speed;
+      if (e.key === "s" || e.key === "ArrowDown") player.y += speed;
+      if (e.key === "a" || e.key === "ArrowLeft") player.x -= speed;
+      if (e.key === "d" || e.key === "ArrowRight") player.x += speed;
     });
 
-    function handleClick(mx,my){
-      // harvest nearest resource within range
-      let nearest = null; let nd=999;
-      for(const r of resources){
-        const d = Math.hypot(r.x-mx,r.y-my);
-        if(d<48 && d<nd){nearest=r; nd=d}
-      }
-      if(nearest){
-        // harvest
-        if(nearest.type==='wood'){inv.wood+=1; log('Collected wood');}
-        if(nearest.type==='stone'){inv.stone+=1; log('Collected stone');}
-        if(nearest.type==='berries'){inv.berries+=1; log('Picked berries');}
-        // remove
-        const i = resources.indexOf(nearest); if(i>=0) resources.splice(i,1);
-        updateInventory();
-        return;
-      }
-      // click on campfire to toggle (light/douse)
-      for(const f of fires){ if(Math.hypot(f.x-mx,f.y-my)<40){ f.on = !f.on; log(f.on? 'Campfire lit' : 'Campfire doused'); return; }}
-      // place campfire if have materials
-      if(inv.wood>=3 && inv.stone>=1){ fires.push({x:mx,y:my,on:true}); inv.wood-=3; inv.stone-=1; inv.fire=true; updateInventory(); log('Built campfire'); return; }
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    function updateInventory(){
-      inventoryEl.innerHTML='';
-      const items = [ ['Wood',inv.wood], ['Stone',inv.stone], ['Berries',inv.berries], ['Spear', inv.spear?1:0], ['Campfire', fires.length] ];
-      items.forEach(it=>{
-        const d = document.createElement('div'); d.className='slot'; d.innerHTML = `<strong>${it[0]}</strong><div style="opacity:.75">${it[1]}</div>`; inventoryEl.appendChild(d);
+    function drawFoods() {
+      foods.forEach((food) => {
+        ctx.fillStyle = food.color;
+        ctx.beginPath();
+        ctx.arc(food.x, food.y, food.size, 0, Math.PI * 2);
+        ctx.fill();
       });
     }
 
-    updateInventory();
-
-    // crafting buttons
-    document.getElementById('craftFire').addEventListener('click',()=>{
-      if(inv.wood>=3 && inv.stone>=1){
-        fires.push({x:player.x+60,y:player.y,on:true}); inv.wood-=3; inv.stone-=1; updateInventory(); log('Crafted campfire near you');
-      } else log('Not enough materials for campfire');
-    });
-    document.getElementById('craftSpear').addEventListener('click',()=>{
-      if(inv.wood>=2 && inv.stone>=1 && !inv.spear){inv.wood-=2; inv.stone-=1; inv.spear=true; updateInventory(); log('Crafted spear');}
-      else log('Cannot craft spear');
-    });
-    document.getElementById('eatBerries').addEventListener('click',()=>{ if(inv.berries>0){inv.berries--; player.hunger = Math.max(0, player.hunger-20); player.thirst = Math.max(0, player.thirst-5); updateInventory(); log('Ate berries');} else log('No berries'); });
-
-    // save/load
-    document.getElementById('btnSave').addEventListener('click',()=>{ localStorage.setItem('survival.save', JSON.stringify({player,inv,resources,fires,enemies,time})); log('Saved game'); });
-    document.getElementById('btnLoad').addEventListener('click',()=>{ const s=localStorage.getItem('survival.save'); if(s){ const d=JSON.parse(s); player.x=d.player.x; player.y=d.player.y; player.health=d.player.health; player.hunger=d.player.hunger; player.thirst=d.player.thirst; player.warmth=d.player.warmth; inv.wood=d.inv.wood; inv.stone=d.inv.stone; inv.berries=d.inv.berries; inv.spear=d.inv.spear; resources.length=0; resources.push(...d.resources); fires.length=0; fires.push(...d.fires); enemies.length=0; enemies.push(...(d.enemies||[])); time=d.time||time; updateInventory(); log('Loaded game'); } else log('No save found'); });
-    document.getElementById('btnReset').addEventListener('click',()=>{ if(confirm('Reset world?')){ resetWorld(); log('World reset'); }});
-
-    function resetWorld(){ player.x=W/2; player.y=H/2; player.health=100; player.hunger=0; player.thirst=0; player.warmth=50; inv.wood=0; inv.stone=0; inv.berries=0; inv.spear=false; resources.length=0; fires.length=0; enemies.length=0; populateResources(); updateInventory(); }
-
-    // enemy logic
-    function spawnEnemiesIfNight(){
-      if(time>=19 || time<6){ // night
-        if(enemies.length<6 && Math.random()<0.02){ enemies.push({x:Math.random()*W,y:Math.random()*H,speed:40,health:30}); }
-      }
+    function distance(a, b) {
+      return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
     }
 
-    // main loop
-    let last=performance.now();
-    function loop(now){
-      const dt = Math.min(0.1,(now-last)/1000); last=now; if(!paused) update(dt);
-      render(); requestAnimationFrame(loop);
-    }
-
-    function update(dt){
-      // time passes
-      time += dt * 0.08; if(time>=24) time-=24;
-      spawnEnemiesIfNight();
-
-      // input movement
-      let vx=0,vy=0;
-      if(keys['w']||keys['arrowup']) vy=-1;
-      if(keys['s']||keys['arrowdown']) vy=1;
-      if(keys['a']||keys['arrowleft']) vx=-1;
-      if(keys['d']||keys['arrowright']) vx=1;
-      const mag = Math.hypot(vx,vy) || 1;
-      player.x += (vx/mag)*player.speed*dt; player.y += (vy/mag)*player.speed*dt;
-      player.x = Math.max(20, Math.min(W-20, player.x)); player.y = Math.max(20, Math.min(H-20, player.y));
-
-      // hunger/thirst increase
-      player.hunger = Math.min(100, player.hunger + dt*2);
-      player.thirst = Math.min(100, player.thirst + dt*3);
-
-      // warmth: near fire increases, at night decreases
-      let warmthBonus = 0;
-      for(const f of fires){ if(f.on){ const d = Math.hypot(f.x-player.x,f.y-player.y); if(d<120) warmthBonus += (1 - d/120) * 30; }}
-      const night = (time>=19 || time<6);
-      player.warmth += (warmthBonus - (night?5:1)) * dt;
-      player.warmth = Math.max(0, Math.min(100, player.warmth));
-
-      // temperature affects health
-      if(player.warmth<20){ player.health -= (20-player.warmth)*0.02*dt*60; }
-
-      // hunger/thirst affect health
-      if(player.hunger>80) player.health -= (player.hunger-80)*0.01*dt*60;
-      if(player.thirst>80) player.health -= (player.thirst-80)*0.02*dt*60;
-      if(player.health<=0) { player.health=0; paused=true; log('You died — press Reset to try again.'); }
-
-      // enemies chase
-      for(const e of enemies){ const dx = player.x-e.x, dy=player.y-e.y; const d = Math.hypot(dx,dy); if(d<6){ // hit
-          player.health -= 10*dt*10; e.health -= inv.spear?20*dt*10:0; if(e.health<=0){ enemies.splice(enemies.indexOf(e),1); log('You killed an enemy'); }
-        } else {
-          e.x += (dx/d)*e.speed*dt; e.y += (dy/d)*e.speed*dt;
-        }}
-
-      // small regen near fire
-      for(const f of fires){ if(f.on && Math.hypot(f.x-player.x,f.y-player.y)<80){ player.health = Math.min(100, player.health + 6*dt); }}
-
-      // random resource respawn
-      if(Math.random()<dt*0.5 && resources.length<80){ resources.push({x:Math.random()*(W-80)+40,y:Math.random()*(H-80)+40,type: Math.random()<0.5? 'wood':(Math.random()<0.7?'stone':'berries'),hit:0}); }
-
-      // UI updates
-      healthBar.style.width = (player.health)+'%'; healthTxt.textContent = Math.round(player.health);
-      hungerBar.style.width = (player.hunger)+'%'; hungerTxt.textContent = Math.round(player.hunger);
-      thirstBar.style.width = (player.thirst)+'%'; thirstTxt.textContent = Math.round(player.thirst);
-      warmthBar.style.width = (player.warmth)+'%'; warmthTxt.textContent = Math.round(player.warmth);
-    }
-
-    function render(){
-      ctx.clearRect(0,0,W,H);
-
-      // background tiles
-      for(let y=0;y<ROWS;y++){
-        for(let x=0;x<COLS;x++){
-          const tx = x*TILE, ty = y*TILE;
-          ctx.fillStyle = ( (x+y)%2 ? '#083146' : '#07263a');
-          ctx.fillRect(tx,ty,TILE,TILE);
+    function update() {
+      // collision / reach detection
+      foods = foods.filter((food) => {
+        if (distance(player, food) < reach) {
+          player.food += 1;
+          document.getElementById("food").textContent = player.food;
+          return false;
         }
+        return true;
+      });
+
+      // occasionally add more food
+      if (Math.random() < 0.01 && foods.length < 8) foods.push(randomFood());
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawFoods();
+    }
+
+    function gameLoop() {
+      update();
+      draw();
+
+      // remove random health drain bug (was caused by random chance)
+      // Instead: lose health only when hungry
+      if (player.food <= 0) {
+        player.health -= 0.05; // slow drain
+      } else if (player.health < 100) {
+        player.health += 0.02; // small regen if you have food
       }
 
-      // day/night overlay
-      const nightFactor = (time>=19 || time<6) ? 0.6 : (time>=18||time<7?0.35:0);
-      if(nightFactor>0){ ctx.fillStyle = `rgba(1,6,20,${nightFactor})`; ctx.fillRect(0,0,W,H); }
+      // cap health
+      if (player.health > 100) player.health = 100;
+      if (player.health < 0) player.health = 0;
 
-      // resources
-      for(const r of resources){
-        if(r.type==='wood'){ drawTree(r.x,r.y); }
-        if(r.type==='stone'){ drawStone(r.x,r.y); }
-        if(r.type==='berries'){ drawBerries(r.x,r.y); }
-      }
+      document.getElementById("health").textContent = Math.floor(player.health);
 
-      // fires
-      for(const f of fires){ drawFire(f.x,f.y,f.on); }
-
-      // enemies
-      for(const e of enemies){ drawEnemy(e.x,e.y); }
-
-      // player
-      drawPlayer(player.x,player.y);
-
-      // HUD overlay like clock
-      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(8,8,160,28); ctx.fillStyle='#fff'; ctx.font='14px system-ui'; ctx.fillText(formatTime(time),16,28);
-      // stamina/notes
-      ctx.fillStyle='#fff'; ctx.font='12px system-ui'; ctx.fillText('Enemies: '+enemies.length,16,46);
+      requestAnimationFrame(gameLoop);
     }
 
-    // draw helpers
-    function drawPlayer(x,y){
-      ctx.save(); ctx.beginPath(); ctx.fillStyle='#9bd3ff'; ctx.arc(x,y,14,0,Math.PI*2); ctx.fill(); ctx.restore();
-      // direction indicator
-      ctx.beginPath(); ctx.fillStyle='#01304788'; ctx.arc(x+Math.cos(player.dir)*8,y+Math.sin(player.dir)*8,4,0,Math.PI*2); ctx.fill();
-    }
-    function drawTree(x,y){ ctx.beginPath(); ctx.fillStyle='#5b3b1f'; ctx.fillRect(x-6,y+6,12,10); ctx.beginPath(); ctx.fillStyle='#1e6b2a'; ctx.ellipse(x,y,18,18,0,0,Math.PI*2); ctx.fill(); }
-    function drawStone(x,y){ ctx.beginPath(); ctx.fillStyle='#6a6f73'; ctx.ellipse(x,y,10,8,0,0,Math.PI*2); ctx.fill(); }
-    function drawBerries(x,y){ ctx.beginPath(); ctx.fillStyle='#6b1622'; ctx.arc(x,y,6,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.fillStyle='#2a6b2f'; ctx.fillRect(x-1,y-6,2,4); }
-    function drawFire(x,y,on){ ctx.save(); ctx.translate(x,y); if(on){ ctx.beginPath(); ctx.fillStyle='rgba(255,160,60,0.95)'; ctx.moveTo(0,-10); ctx.quadraticCurveTo(8,-6,4,6); ctx.quadraticCurveTo(0,0,-6,6); ctx.quadraticCurveTo(-12,-2,0,-10); ctx.fill(); ctx.beginPath(); ctx.fillStyle='rgba(255,240,210,0.6)'; ctx.arc(0,0,6,0,Math.PI*2); ctx.fill(); } else { ctx.beginPath(); ctx.fillStyle='rgba(30,30,30,0.6)'; ctx.rect(-14,-6,28,8); ctx.fill(); }
-      ctx.restore();
-    }
-    function drawEnemy(x,y){ ctx.beginPath(); ctx.fillStyle='#b04a4a'; ctx.arc(x,y,10,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.fillStyle='#501212'; ctx.fillRect(x-4,y+6,8,3); }
-
-    // inventory toggle
-    function toggleInventory(){ const h= document.getElementById('hud'); if(inventoryEl.style.display==='none') inventoryEl.style.display='grid'; else inventoryEl.style.display='grid'; }
-
-    // start
-    requestAnimationFrame(loop);
-
-    // touch support - simple virtual joystick (left side) and tap to interact
-    let touchData = {active:false, id:null, startX:0, startY:0};
-    window.addEventListener('touchstart', e=>{
-      for(const t of e.changedTouches){ if(t.clientX < window.innerWidth/2){ touchData.active=true; touchData.id=t.identifier; touchData.startX=t.clientX; touchData.startY=t.clientY; } else { // right side tap = interact
-          const rect = canvas.getBoundingClientRect(); const mx = (t.clientX-rect.left)*(canvas.width/rect.width); const my = (t.clientY-rect.top)*(canvas.height/rect.height); handleClick(mx,my);
-        }} }, {passive:true});
-    window.addEventListener('touchmove', e=>{ for(const t of e.changedTouches){ if(t.identifier===touchData.id){ const dx = t.clientX - touchData.startX; const dy = t.clientY - touchData.startY; keys['w']=dy<-10; keys['s']=dy>10; keys['a']=dx<-10; keys['d']=dx>10; } } }, {passive:true});
-    window.addEventListener('touchend', e=>{ for(const t of e.changedTouches){ if(t.identifier===touchData.id){ touchData.active=false; touchData.id=null; keys['w']=keys['a']=keys['s']=keys['d']=false; } } }, {passive:true});
-
-    // small tips
-    log('Welcome! Click resources to gather. Build a campfire to survive the night.');
-    log('Tip: save your game with the Save button.');
-
-  })();
+    gameLoop();
   </script>
 </body>
 </html>
