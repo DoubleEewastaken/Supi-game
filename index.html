@@ -4,125 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Survival Game</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #87ceeb;
-      font-family: sans-serif;
-      color: white;
-    }
-    #gameCanvas {
-      background: #228b22;
-      display: block;
-      margin: 0 auto;
-      border: 3px solid #fff;
-    }
-    #hud {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 18px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <canvas id="gameCanvas" width="800" height="500"></canvas>
-  <div id="hud">❤️ Health: <span id="health">100</span> | 🍖 Food: <span id="food">0</span></div>
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-
-    let player = { x: 400, y: 250, size: 25, color: "blue", health: 100, food: 0 };
-    let foods = [];
-    let reach = 60; // increased reach range
-
-    function randomFood() {
-      return {
-        x: Math.random() * (canvas.width - 20),
-        y: Math.random() * (canvas.height - 20),
-        size: 15,
-        color: "orange",
-      };
-    }
-
-    // start with 5 food items
-    for (let i = 0; i < 5; i++) foods.push(randomFood());
-
-    document.addEventListener("keydown", (e) => {
-      const speed = 5;
-      if (e.key === "w" || e.key === "ArrowUp") player.y -= speed;
-      if (e.key === "s" || e.key === "ArrowDown") player.y += speed;
-      if (e.key === "a" || e.key === "ArrowLeft") player.x -= speed;
-      if (e.key === "d" || e.key === "ArrowRight") player.x += speed;
-    });
-
-    function drawPlayer() {
-      ctx.fillStyle = player.color;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    function drawFoods() {
-      foods.forEach((food) => {
-        ctx.fillStyle = food.color;
-        ctx.beginPath();
-        ctx.arc(food.x, food.y, food.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    }
-
-    function distance(a, b) {
-      return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-    }
-
-    function update() {
-      // collision / reach detection
-      foods = foods.filter((food) => {
-        if (distance(player, food) < reach) {
-          player.food += 1;
-          document.getElementById("food").textContent = player.food;
-          return false;
-        }
-        return true;
-      });
-
-      // occasionally add more food
-      if (Math.random() < 0.01 && foods.length < 8) foods.push(randomFood());
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawPlayer();
-      drawFoods();
-    }
-
-    function gameLoop() {
-      update();
-      draw();
-
-      // remove random health drain bug (was caused by random chance)
-      // Instead: lose health only when hungry
-      if (player.food <= 0) {
-        player.health -= 0.05; // slow drain
-      } else if (player.health < 100) {
-        player.health += 0.02; // small regen if you have food
-      }
-
-      // cap health
-      if (player.health > 100) player.health = 100;
-      if (player.health < 0) player.health = 0;
-
-      document.getElementById("health").textContent = Math.floor(player.health);
-
-      requestAnimationFrame(gameLoop);
-    }
-
-    gameLoop();
-  </script>
+  <canvas id="gameCanvas" width="900" height="600"></canvas>
+  <div id="hud">
+    ❤️ <span id="health">100</span> | 🍖 <span id="hunger">100</span> | 💧 <span id="thirst">100</span> 
+    | 🪵 <span id="wood">0</span> | 🪨 <span id="stone">0</span>
+  </div>
+  <script src="game.js"></script>
 </body>
 </html>
